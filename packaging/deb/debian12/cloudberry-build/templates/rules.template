@@ -1,0 +1,67 @@
+#!/usr/bin/make -f
+export DH_VERBOSE = 1
+
+# Disable autoreconf
+export DH_AUTORECONF_DISABLE=1
+
+# Set the source directory
+export SRCDIR := $(shell pwd)
+
+%:
+	dh $@
+
+override_dh_autoreconf:
+	# Do nothing to skip autoreconf
+
+override_dh_auto_clean:
+	# Remove common build artifacts
+	rm -rf *.o *.lo *.la *.al .libs *.so *.so.[0-9]* *.a *.pyc *.pyo __pycache__
+
+	# Remove build directories
+	rm -rf build-aux build
+
+	# If there's a custom clean script, run it
+	if [ -f ./clean.sh ]; then \
+		sh ./clean.sh; \
+	fi
+
+	# Run standard dh_auto_clean, but don't fail if it errors
+	dh_auto_clean || true
+
+override_dh_auto_configure:
+	./configure --prefix=/usr/local/cloudberry-db \
+		--disable-external-fts \
+		--enable-gpcloud \
+		--enable-ic-proxy \
+		--enable-mapreduce \
+		--enable-orafce \
+		--enable-orca \
+		--enable-pxf \
+		--enable-tap-tests \
+		--with-gssapi \
+		--with-ldap \
+		--with-libxml \
+		--with-lz4 \
+		--with-openssl \
+		--with-pam \
+		--with-perl \
+		--with-pgport=5432 \
+		--with-python \
+		--with-pythonsrc-ext \
+		--with-ssl=openssl \
+		--with-openssl \
+		--with-uuid=e2fs
+
+override_dh_auto_build:
+	# Build texport SRroject
+	make -j$(nproc) CFLAGS="-I$(SRCDIR)/src/include -I$(SRCDIR)/src/interfaces/libpq"
+	make -j$(nproc) -C contrib CFLAGS="-I$(SRCDIR)/src/include -I$(SRCDIR)/src/interface
+# Remove build directories
+rm -rf build-aux build
+
+IR=$(CURDIR)/debian/cloudberry-db
+make install -C contrib DESTDIR=$(CURDIR)/debian/cloudberry-db
+
+override_dh_auto_test:
+# Disable automatic tests
+:

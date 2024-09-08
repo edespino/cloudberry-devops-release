@@ -1,0 +1,5 @@
+cloudberry-db (${VERSION}-1) unstable; urgency=medium
+
+  * Initial release of Cloudberry Database ${VERSION}
+
+ -- ${FULLNAME:-Your Name} <${EMAIL:-your.email@example.com}>  $(date -R)
