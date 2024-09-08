@@ -62,3 +62,15 @@ override_dh_auto_install:
 override_dh_auto_test:
 	# Disable automatic tests
 	:
+
+override_dh_installchangelogs:
+	dh_installchangelogs --no-trim
+
+override_dh_usrlocal:
+	# Do nothing to skip dh_usrlocal
+
+# Set correct permissions for greenplum_path.sh
+execute_after_dh_fixperms:
+	if [ -f debian/cloudberry-db/usr/local/cloudberry-db/greenplum_path.sh ]; then \
+		chmod 644 debian/cloudberry-db/usr/local/cloudberry-db/greenplum_path.sh; \
+	fi

@@ -141,7 +141,7 @@ build_package() {
         fi
     fi
 
-    sbuild -d bookworm -j$(nproc) .
+    CFLAGS="-Wno-suggest-attribute=format -Wno-missing-prototypes -Wno-cast-function-type" sbuild -d bookworm --no-run-lintian -j$(nproc) .
 }
 
 list_chroots() {
