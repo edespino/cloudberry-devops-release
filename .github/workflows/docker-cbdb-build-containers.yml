@@ -41,7 +41,7 @@ name: docker-cbdb-build-containers
 on:
   push:
     branches:
-      - main
+      - docker-images
     paths:
       - 'images/docker/cbdb/build/rocky8/**'
       - 'images/docker/cbdb/build/rocky9/**'

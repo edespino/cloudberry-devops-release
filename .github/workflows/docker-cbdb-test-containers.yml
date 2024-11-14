@@ -40,7 +40,7 @@ name: docker-cbdb-test-containers
 on:
   push:
     branches:
-      - main
+      - docker-images
     paths:
       - 'images/docker/cbdb/test/rocky8/**'
       - 'images/docker/cbdb/test/rocky9/**'
