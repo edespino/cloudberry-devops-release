@@ -56,6 +56,7 @@
 #
 # --------------------------------------------------------------------
 
+#!/usr/bin/env perl
 use strict;
 use warnings;
 
@@ -105,7 +106,7 @@ while (<$fh>) {
     }
 
     # Capture failed tests
-    if (/^\s+(\S+)\s+\.\.\. FAILED\s+/) {
+    if (/^(?:\s+|test\s+)(\S+)\s+\.\.\.\s+FAILED\s+/) {
         push @failed_test_list, $1;
     }
 }
@@ -113,11 +114,16 @@ close($fh);
 
 unless (defined $status) {
     print "Error: Could not find test summary in $file\n";
-    print "Last few lines of file:\n";
-    open(my $fh, '<', $file) or exit PARSE_ERROR;
-    my @lines = <$fh>;
-    close($fh);
-    print join("", @lines[-10..-1]) if @lines > 0;
+    exit PARSE_ERROR;
+}
+
+# Validate failed test count matches found test names
+if ($status eq 'failed' && scalar(@failed_test_list) != $failed_tests) {
+    print "Error: Found $failed_tests failed tests in summary but found " . scalar(@failed_test_list) . " failed test names\n";
+    print "Failed test names found:\n";
+    foreach my $test (@failed_test_list) {
+        print "  - $test\n";
+    }
     exit PARSE_ERROR;
 }
 
@@ -132,7 +138,7 @@ print $out "TOTAL_TESTS=$total_tests\n";
 print $out "FAILED_TESTS=$failed_tests\n";
 print $out "PASSED_TESTS=$passed_tests\n";
 if (@failed_test_list) {
-    print $out "FAILED_TEST_NAMES=" . join(", ", @failed_test_list) . "\n";
+    print $out "FAILED_TEST_NAMES=" . join(",", @failed_test_list) . "\n";
 }
 close($out);
 
