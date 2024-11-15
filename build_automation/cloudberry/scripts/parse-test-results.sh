@@ -20,14 +20,29 @@
 # --------------------------------------------------------------------
 #
 # Script: parse-test-results.sh
-# Description: Parses CloudBerry DB test results and outputs in various formats
+# Description: Parses CloudBerry DB test results and processes the
+#              output.  Wraps parse_results.pl to provide additional
+#              functionality and GitHub Actions integration.
 #
 # Required Environment Variables:
 #   None
 #
 # Optional Environment Variables:
 #   GITHUB_OUTPUT - GitHub Actions output file path (for CI environment)
-#   LOG_DIR - Directory for logs (defaults to build-logs/details)
+#   LOG_DIR      - Directory for logs (defaults to build-logs/details)
+#   SRC_DIR      - Root source directory (for locating parse_results.pl)
+#
+# Generated Outputs:
+#   When GITHUB_OUTPUT is set, writes the following:
+#   - status       (passed/failed)
+#   - total_tests  (total number of tests)
+#   - failed_tests (number of failed tests)
+#   - passed_tests (number of passed tests)
+#
+# Exit Codes:
+#   0    Success - Tests passed or results properly parsed
+#   1    Expected Failure - Tests ran but some failed
+#   2    Unexpected Error - Missing files or parse errors
 #
 # Usage:
 #   ./parse-test-results.sh [log-file]
@@ -38,11 +53,20 @@
 # Examples:
 #   ./parse-test-results.sh
 #   ./parse-test-results.sh path/to/custom/test.log
+#   ./parse-test-results.sh build-logs/details/make-installcheck-good.log
+#
+# Dependencies:
+#   - parse_results.pl must be in the same directory as this script
+#   - Requires Perl to be installed
+#
+# Notes:
+#   - Will create temporary file test_results.txt which is cleaned up
+#     after execution
+#   - Handles both local execution and GitHub Actions environment
 #
 # --------------------------------------------------------------------
 
-# Exit on error
-set -ex
+set -e
 
 # Default log file path
 DEFAULT_LOG_PATH="build-logs/details/make-installcheck-good.log"
@@ -51,24 +75,38 @@ LOG_FILE=${1:-$DEFAULT_LOG_PATH}
 # Get the directory where this script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+# Check if log file exists
+if [ ! -f "$LOG_FILE" ]; then
+    echo "Error: Test log file not found: $LOG_FILE"
+    exit 2  # Special exit code for missing file
+fi
+
 # Run the perl script
-perl "${SCRIPT_DIR}/parse-results.pl" "$LOG_FILE"
+perl "${SCRIPT_DIR}/parse-results.pl" "$LOG_FILE" || {
+    exit_code=$?
+    if [ $exit_code -eq 2 ]; then
+        echo "Error: Could not parse test results"
+        exit 2
+    fi
+    exit $exit_code
+}
 
 # Check if results file exists and source it if it does
-if [ -f test_results.txt ]; then
-    source test_results.txt
-    echo "Results loaded into environment variables:"
-    echo "STATUS=$STATUS"
-    echo "TOTAL_TESTS=$TOTAL_TESTS"
-    echo "FAILED_TESTS=$FAILED_TESTS"
-    echo "PASSED_TESTS=$PASSED_TESTS"
-    
-    # Clean up
-    rm test_results.txt
-else
+if [ ! -f test_results.txt ]; then
     echo "Error: No results file generated"
-    exit 1
+    exit 2
 fi
+
+source test_results.txt
+
+echo "Results loaded into environment variables:"
+echo "STATUS=$STATUS"
+echo "TOTAL_TESTS=$TOTAL_TESTS"
+echo "FAILED_TESTS=$FAILED_TESTS"
+echo "PASSED_TESTS=$PASSED_TESTS"
+
+# Clean up
+rm test_results.txt
 
 # If in GitHub Actions, set outputs
 if [ -n "$GITHUB_OUTPUT" ]; then
@@ -80,8 +118,18 @@ if [ -n "$GITHUB_OUTPUT" ]; then
     } >> "$GITHUB_OUTPUT"
 fi
 
-# Exit with failure if tests failed
-if [ "$STATUS" = "failed" ]; then
-    echo "Tests failed: $FAILED_TESTS of $TOTAL_TESTS failed"
-    exit 1
-fi
+# Handle the test status
+case "$STATUS" in
+    "passed")
+        echo "All tests passed successfully"
+        exit 0
+        ;;
+    "failed")
+        echo "Tests failed: $FAILED_TESTS of $TOTAL_TESTS failed"
+        exit 1
+        ;;
+    *)
+        echo "Error: Unknown test status: $STATUS"
+        exit 2
+        ;;
+esac
