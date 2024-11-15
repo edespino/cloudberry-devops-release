@@ -21,7 +21,7 @@
 #
 # Script: parse-test-results.sh
 # Description: Parses CloudBerry DB test results and processes the output.
-#             Wraps parse_results.pl to provide additional functionality
+#             Wraps parse-results.pl to provide additional functionality
 #             and GitHub Actions integration.
 #
 # Required Environment Variables:
@@ -30,7 +30,7 @@
 # Optional Environment Variables:
 #   GITHUB_OUTPUT - GitHub Actions output file path (for CI environment)
 #   LOG_DIR      - Directory for logs (defaults to build-logs/details)
-#   SRC_DIR      - Root source directory (for locating parse_results.pl)
+#   SRC_DIR      - Root source directory (for locating parse-results.pl)
 #
 # Generated Outputs:
 #   When GITHUB_OUTPUT is set, writes the following:
@@ -56,7 +56,7 @@
 #   ./parse-test-results.sh path/to/custom/test.log
 #
 # Dependencies:
-#   - parse_results.pl must be in the same directory as this script
+#   - parse-results.pl must be in the same directory as this script
 #   - Requires Perl to be installed
 #
 # Notes:
@@ -81,7 +81,7 @@ if [ ! -f "$LOG_FILE" ]; then
 fi
 
 # Run the perl script
-perl "${SCRIPT_DIR}/parse_results.pl" "$LOG_FILE"
+perl "${SCRIPT_DIR}/parse-results.pl" "$LOG_FILE"
 
 # Check if results file exists and source it if it does
 if [ ! -f test_results.txt ]; then
