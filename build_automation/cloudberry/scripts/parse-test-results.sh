@@ -20,9 +20,9 @@
 # --------------------------------------------------------------------
 #
 # Script: parse-test-results.sh
-# Description: Parses CloudBerry DB test results and processes the
-#              output.  Wraps parse_results.pl to provide additional
-#              functionality and GitHub Actions integration.
+# Description: Parses CloudBerry DB test results and processes the output.
+#             Wraps parse_results.pl to provide additional functionality
+#             and GitHub Actions integration.
 #
 # Required Environment Variables:
 #   None
@@ -38,6 +38,7 @@
 #   - total_tests  (total number of tests)
 #   - failed_tests (number of failed tests)
 #   - passed_tests (number of passed tests)
+#   - failed_test_names (comma-separated list of failed test names)
 #
 # Exit Codes:
 #   0    Success - Tests passed or results properly parsed
@@ -53,15 +54,13 @@
 # Examples:
 #   ./parse-test-results.sh
 #   ./parse-test-results.sh path/to/custom/test.log
-#   ./parse-test-results.sh build-logs/details/make-installcheck-good.log
 #
 # Dependencies:
 #   - parse_results.pl must be in the same directory as this script
 #   - Requires Perl to be installed
 #
 # Notes:
-#   - Will create temporary file test_results.txt which is cleaned up
-#     after execution
+#   - Will create temporary file test_results.txt which is cleaned up after execution
 #   - Handles both local execution and GitHub Actions environment
 #
 # --------------------------------------------------------------------
@@ -78,18 +77,11 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # Check if log file exists
 if [ ! -f "$LOG_FILE" ]; then
     echo "Error: Test log file not found: $LOG_FILE"
-    exit 2  # Special exit code for missing file
+    exit 2
 fi
 
 # Run the perl script
-perl "${SCRIPT_DIR}/parse-results.pl" "$LOG_FILE" || {
-    exit_code=$?
-    if [ $exit_code -eq 2 ]; then
-        echo "Error: Could not parse test results"
-        exit 2
-    fi
-    exit $exit_code
-}
+perl "${SCRIPT_DIR}/parse_results.pl" "$LOG_FILE"
 
 # Check if results file exists and source it if it does
 if [ ! -f test_results.txt ]; then
@@ -104,9 +96,9 @@ echo "STATUS=$STATUS"
 echo "TOTAL_TESTS=$TOTAL_TESTS"
 echo "FAILED_TESTS=$FAILED_TESTS"
 echo "PASSED_TESTS=$PASSED_TESTS"
-
-# Clean up
-rm test_results.txt
+if [ -n "$FAILED_TEST_NAMES" ]; then
+    echo "FAILED_TEST_NAMES=$FAILED_TEST_NAMES"
+fi
 
 # If in GitHub Actions, set outputs
 if [ -n "$GITHUB_OUTPUT" ]; then
@@ -115,8 +107,12 @@ if [ -n "$GITHUB_OUTPUT" ]; then
         echo "total_tests=$TOTAL_TESTS"
         echo "failed_tests=$FAILED_TESTS"
         echo "passed_tests=$PASSED_TESTS"
+        [ -n "$FAILED_TEST_NAMES" ] && echo "failed_test_names=$FAILED_TEST_NAMES"
     } >> "$GITHUB_OUTPUT"
 fi
+
+# Clean up
+rm test_results.txt
 
 # Handle the test status
 case "$STATUS" in

@@ -20,9 +20,8 @@
 # --------------------------------------------------------------------
 #
 # Script: parse_results.pl
-# Description: Parses CloudBerry DB test output and extracts test
-#              summary statistics.  Processes test results to
-#              determine pass/fail status and test counts.
+# Description: Parses CloudBerry DB test output and extracts test summary statistics.
+#             Processes test results to determine pass/fail status and test counts.
 #
 # Usage:
 #   ./parse_results.pl <log-file>
@@ -36,6 +35,7 @@
 #   - TOTAL_TESTS   (total number of tests)
 #   - FAILED_TESTS  (number of failed tests)
 #   - PASSED_TESTS  (number of passed tests)
+#   - FAILED_TEST_NAMES (comma-separated list of failed test names)
 #
 # Exit Codes:
 #   0    Success - All tests passed
@@ -43,9 +43,8 @@
 #   2    Parse Error - Could not find/read file or parse results
 #
 # Pattern Matching:
-#   Looks for lines containing either:
-#   - "All X tests passed."
-#   - "Y of X tests failed."
+#   - Looks for summary: "All X tests passed." or "Y of X tests failed."
+#   - Captures failed tests from lines containing "... FAILED"
 #
 # Examples:
 #   ./parse_results.pl build-logs/details/make-installcheck-good.log
@@ -54,7 +53,6 @@
 # Notes:
 #   - Requires read access to input file
 #   - Requires write access to current directory for test_results.txt
-#   - Will print last 10 lines of log file if no test summary found
 #
 # --------------------------------------------------------------------
 
@@ -89,21 +87,26 @@ open(my $fh, '<', $file) or do {
 };
 
 my ($status, $total_tests, $failed_tests, $passed_tests);
+my @failed_test_list = ();
 
 while (<$fh>) {
+    # Match the summary lines
     if (/All (\d+) tests passed\./) {
         $status = 'passed';
         $total_tests = $1;
         $failed_tests = 0;
         $passed_tests = $1;
-        last;
     }
     elsif (/(\d+) of (\d+) tests failed\./) {
         $status = 'failed';
         $failed_tests = $1;
         $total_tests = $2;
         $passed_tests = $2 - $1;
-        last;
+    }
+
+    # Capture failed tests
+    if (/^\s+(\S+)\s+\.\.\. FAILED\s+/) {
+        push @failed_test_list, $1;
     }
 }
 close($fh);
@@ -111,7 +114,6 @@ close($fh);
 unless (defined $status) {
     print "Error: Could not find test summary in $file\n";
     print "Last few lines of file:\n";
-    # Print last few lines for debugging
     open(my $fh, '<', $file) or exit PARSE_ERROR;
     my @lines = <$fh>;
     close($fh);
@@ -129,14 +131,23 @@ print $out "STATUS=$status\n";
 print $out "TOTAL_TESTS=$total_tests\n";
 print $out "FAILED_TESTS=$failed_tests\n";
 print $out "PASSED_TESTS=$passed_tests\n";
+if (@failed_test_list) {
+    print $out "FAILED_TEST_NAMES=" . join(", ", @failed_test_list) . "\n";
+}
 close($out);
 
-# Also print to stdout for logging
+# Print to stdout for logging
 print "Test Results:\n";
 print "Status: $status\n";
 print "Total Tests: $total_tests\n";
 print "Failed Tests: $failed_tests\n";
 print "Passed Tests: $passed_tests\n";
+if (@failed_test_list) {
+    print "Failed Test Names:\n";
+    foreach my $test (@failed_test_list) {
+        print "  - $test\n";
+    }
+}
 
 # Exit with appropriate code
 if ($status eq 'passed') {
