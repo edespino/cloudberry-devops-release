@@ -20,13 +20,47 @@
 # --------------------------------------------------------------------
 #
 # Script: create-cloudberry-demo-cluster.sh
-# Description: Creates and configures a demo CloudBerry DB cluster
+# Description: Creates and configures a demo CloudBerry DB cluster.
+#             Performs the following steps:
+#             1. Sets up required environment variables
+#             2. Verifies SSH connectivity
+#             3. Creates demo cluster using make
+#             4. Initializes and starts the cluster
+#             5. Performs comprehensive verification checks
 #
 # Required Environment Variables:
 #   SRC_DIR - Root source directory
 #
 # Optional Environment Variables:
 #   LOG_DIR - Directory for logs (defaults to ${SRC_DIR}/build-logs)
+#
+# Prerequisites:
+#   - CloudBerry DB must be installed (/usr/local/cloudberry-db)
+#   - SSH must be configured for passwordless access to localhost
+#   - User must have permissions to create cluster directories
+#   - PostgreSQL client tools (psql) must be available
+#
+# Usage:
+#   Export required variables:
+#     export SRC_DIR=/path/to/cloudberry/source
+#   Then run:
+#     ./create-cloudberry-demo-cluster.sh
+#
+# Verification Checks:
+#   - CloudBerry DB version
+#   - Segment configuration
+#   - Available extensions
+#   - Active sessions
+#   - Configuration history
+#   - Replication status
+#
+# Exit Codes:
+#   0 - Cluster created and verified successfully
+#   1 - Environment setup failed
+#   2 - SSH verification failed
+#   3 - Cluster creation failed
+#   4 - Cluster startup failed
+#   5 - Verification checks failed
 #
 # --------------------------------------------------------------------
 
@@ -45,39 +79,45 @@ init_environment "CloudBerry Demo Cluster Script" "${CLUSTER_LOG}"
 
 # Setup environment
 log_section "Environment Setup"
-source /usr/local/cloudberry-db/greenplum_path.sh
+source /usr/local/cloudberry-db/greenplum_path.sh || exit 1
 log_section_end "Environment Setup"
 
 # Verify SSH access
 log_section "SSH Verification"
-execute_cmd ssh $(hostname) 'whoami; hostname'
+execute_cmd ssh $(hostname) 'whoami; hostname' || exit 2
 log_section_end "SSH Verification"
 
 # Create demo cluster
 log_section "Demo Cluster Creation"
-execute_cmd make create-demo-cluster --directory ${SRC_DIR}/../cloudberry
+execute_cmd make create-demo-cluster --directory ${SRC_DIR}/../cloudberry || exit 3
 log_section_end "Demo Cluster Creation"
 
 # Source demo environment
 log_section "Source Environment"
-source ${SRC_DIR}/../cloudberry/gpAux/gpdemo/gpdemo-env.sh
+source ${SRC_DIR}/../cloudberry/gpAux/gpdemo/gpdemo-env.sh || exit 1
 log_section_end "Source Environment"
 
 # Manage cluster state
 log_section "Cluster Management"
-execute_cmd gpstop -a
-execute_cmd gpstart -a
-execute_cmd gpstate
+execute_cmd gpstop -a || exit 4
+execute_cmd gpstart -a || exit 4
+execute_cmd gpstate || exit 4
 log_section_end "Cluster Management"
 
 # Verify installation
 log_section "Installation Verification"
-run_psql_cmd "SELECT version()"
-run_psql_cmd "SELECT * from gp_segment_configuration"
-run_psql_cmd "SELECT * FROM pg_available_extensions"
-run_psql_cmd "SELECT * from pg_stat_activity"
-run_psql_cmd "SELECT * FROM gp_configuration_history"
-run_psql_cmd "SELECT * FROM gp_stat_replication"
+verification_failed=false
+run_psql_cmd "SELECT version()" || verification_failed=true
+run_psql_cmd "SELECT * from gp_segment_configuration" || verification_failed=true
+run_psql_cmd "SELECT * FROM pg_available_extensions" || verification_failed=true
+run_psql_cmd "SELECT * from pg_stat_activity" || verification_failed=true
+run_psql_cmd "SELECT * FROM gp_configuration_history" || verification_failed=true
+run_psql_cmd "SELECT * FROM gp_stat_replication" || verification_failed=true
+
+if [ "$verification_failed" = true ]; then
+    echo "One or more verification checks failed" | tee -a "${CLUSTER_LOG}"
+    exit 5
+fi
 log_section_end "Installation Verification"
 
 # Log completion

@@ -20,38 +20,49 @@
 # --------------------------------------------------------------------
 #
 # Script: parse_results.pl
-# Description: Parses CloudBerry DB test output and extracts test summary statistics.
-#             Processes test results to determine pass/fail status and test counts.
-#
-# Usage:
-#   ./parse_results.pl <log-file>
+# Description: Processes CloudBerry DB test output to extract statistics and results.
+#             Analyzes test log files to determine:
+#             1. Overall test status (pass/fail)
+#             2. Total number of tests run
+#             3. Number of passed and failed tests
+#             4. Names of failed tests
+#             Results are written to a file for shell script processing.
 #
 # Arguments:
-#   log-file    Path to test log file to parse
+#   log-file    Path to test log file (required)
 #
-# Output Files:
-#   Creates test_results.txt with the following variables:
-#   - STATUS        (passed/failed)
-#   - TOTAL_TESTS   (total number of tests)
-#   - FAILED_TESTS  (number of failed tests)
-#   - PASSED_TESTS  (number of passed tests)
-#   - FAILED_TEST_NAMES (comma-separated list of failed test names)
+# Input File Format:
+#   Expects test log files containing either:
+#   - "All X tests passed."
+#   - "Y of X tests failed."
+#   And failed test entries in format:
+#   - "test_name ... FAILED"
+#
+# Output File (test_results.txt):
+#   Environment variable format:
+#   STATUS=passed|failed
+#   TOTAL_TESTS=<number>
+#   FAILED_TESTS=<number>
+#   PASSED_TESTS=<number>
+#   FAILED_TEST_NAMES=<comma-separated-list>
+#
+# Prerequisites:
+#   - Read access to input log file
+#   - Write access to current directory
+#   - Perl 5.x or higher
 #
 # Exit Codes:
-#   0    Success - All tests passed
-#   1    Expected Failure - Tests ran but some failed
-#   2    Parse Error - Could not find/read file or parse results
+#   0 - All tests passed
+#   1 - Some tests failed (expected failure)
+#   2 - Parse error or cannot access files
 #
-# Pattern Matching:
-#   - Looks for summary: "All X tests passed." or "Y of X tests failed."
-#   - Captures failed tests from lines containing "... FAILED"
+# Example Usage:
+#   ./parse_results.pl test_output.log
 #
-# Examples:
-#   ./parse_results.pl path/to/custom/test.log
-#
-# Notes:
-#   - Requires read access to input file
-#   - Requires write access to current directory for test_results.txt
+# Error Handling:
+#   - Validates input file existence and readability
+#   - Verifies failed test count matches found failures
+#   - Reports parsing errors with detailed messages
 #
 # --------------------------------------------------------------------
 

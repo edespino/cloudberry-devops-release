@@ -20,13 +20,24 @@
 # --------------------------------------------------------------------
 #
 # Script: unittest-cloudberry.sh
-# Description: Unittests CloudBerry DB from source
+# Description: Executes unit tests for CloudBerry DB from source code.
+#             Runs the 'unittest-check' make target and logs results.
+#             Tests are executed against the compiled source without
+#             requiring a full installation.
 #
 # Required Environment Variables:
 #   SRC_DIR - Root source directory
 #
 # Optional Environment Variables:
-#   LOG_DIR - Directory for logs (defaults to ${SRC_DIR}/unittest-logs)
+#   LOG_DIR - Directory for logs (defaults to ${SRC_DIR}/build-logs)
+#
+# Usage:
+#   ./unittest-cloudberry.sh
+#
+# Exit Codes:
+#   0 - All unit tests passed successfully
+#   1 - Environment setup failed (missing SRC_DIR, LOG_DIR creation failed)
+#   2 - Unit test execution failed
 #
 # --------------------------------------------------------------------
 
@@ -50,7 +61,7 @@ log_section_end "Environment Setup"
 
 # Unittest process
 log_section "Unittest Process"
-execute_cmd make --directory ${SRC_DIR}/../cloudberry unittest-check
+execute_cmd make --directory ${SRC_DIR}/../cloudberry unittest-check || exit 2
 log_section_end "Unittest Process"
 
 # Log completion

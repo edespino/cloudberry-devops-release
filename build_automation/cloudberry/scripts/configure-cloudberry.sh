@@ -21,12 +21,58 @@
 #
 # Script: configure-cloudberry.sh
 # Description: Configures CloudBerry DB build environment and runs ./configure
+#             with optimized settings. Performs the following:
+#             1. Prepares /usr/local/cloudberry-db directory
+#             2. Sets up library dependencies
+#             3. Configures build with required features enabled
+#
+# Configuration Features:
+#   - Cloud Storage Integration (gpcloud)
+#   - IC Proxy Support
+#   - MapReduce Processing
+#   - Oracle Compatibility (orafce)
+#   - ORCA Query Optimizer
+#   - PXF External Table Access
+#   - Test Automation Support (tap-tests)
+#
+# System Integration:
+#   - GSSAPI Authentication
+#   - LDAP Authentication
+#   - XML Processing
+#   - LZ4 Compression
+#   - OpenSSL Support
+#   - PAM Authentication
+#   - Perl Support
+#   - Python Support
 #
 # Required Environment Variables:
 #   SRC_DIR - Root source directory
 #
 # Optional Environment Variables:
 #   LOG_DIR - Directory for logs (defaults to ${SRC_DIR}/build-logs)
+#
+# Prerequisites:
+#   - System dependencies must be installed:
+#     * xerces-c development files
+#     * OpenSSL development files
+#     * Python development files
+#     * Perl development files
+#     * LDAP development files
+#   - /usr/local must be writable
+#   - User must have sudo privileges
+#
+# Usage:
+#   Export required variables:
+#     export SRC_DIR=/path/to/cloudberry/source
+#   Then run:
+#     ./configure-cloudberry.sh
+#
+# Exit Codes:
+#   0 - Configuration completed successfully
+#   1 - Environment setup failed
+#   2 - Directory preparation failed
+#   3 - Library setup failed
+#   4 - Configure command failed
 #
 # --------------------------------------------------------------------
 
@@ -45,14 +91,13 @@ init_environment "CloudBerry Configure Script" "${CONFIGURE_LOG}"
 
 # Initial setup
 log_section "Initial Setup"
-execute_cmd sudo rm -rf /usr/local/cloudberry-db
-execute_cmd sudo chmod a+w /usr/local
-execute_cmd mkdir -p /usr/local/cloudberry-db/lib
+execute_cmd sudo rm -rf /usr/local/cloudberry-db || exit 2
+execute_cmd sudo chmod a+w /usr/local || exit 2
+execute_cmd mkdir -p /usr/local/cloudberry-db/lib || exit 2
 execute_cmd sudo cp /usr/local/xerces-c/lib/libxerces-c.so \
         /usr/local/xerces-c/lib/libxerces-c-3.3.so \
-        /usr/local/cloudberry-db/lib
-execute_cmd sudo chown -R gpadmin.gpadmin /usr/local/cloudberry-db
-
+        /usr/local/cloudberry-db/lib || exit 3
+execute_cmd sudo chown -R gpadmin.gpadmin /usr/local/cloudberry-db || exit 2
 log_section_end "Initial Setup"
 
 # Set environment
@@ -85,7 +130,7 @@ execute_cmd ./configure --prefix=/usr/local/cloudberry-db \
             --with-openssl \
             --with-uuid=e2fs \
             --with-includes=/usr/local/xerces-c/include \
-            --with-libraries=/usr/local/cloudberry-db/lib
+            --with-libraries=/usr/local/cloudberry-db/lib || exit 4
 log_section_end "Configure"
 
 # Capture version information

@@ -19,7 +19,7 @@
 #
 # --------------------------------------------------------------------
 #
-# Script: cloudberry-utils.sh
+# Library: cloudberry-utils.sh
 # Description: Common utility functions for CloudBerry DB build and test scripts
 #
 # Required Environment Variables:
@@ -29,26 +29,54 @@
 #   LOG_DIR - Directory for logs (defaults to ${SRC_DIR}/build-logs)
 #
 # Functions:
-#   init_environment     - Initialize logging and verify environment
-#   execute_cmd         - Execute command with logging
-#   run_psql_cmd       - Execute PostgreSQL command with logging
-#   source_cloudberry_env - Source CloudBerry environment files
-#   log_section        - Log section start
-#   log_section_end    - Log section end
-#   log_completion     - Log script completion
+#   init_environment "Script Name" "Log File"
+#     - Initialize logging and verify environment
+#     - Parameters:
+#       * script_name: Name of the calling script
+#       * log_file: Path to log file
+#     - Returns: 0 on success, 1 on failure
+#
+#   execute_cmd command [args...]
+#     - Execute command with logging
+#     - Parameters: Command and its arguments
+#     - Returns: Command's exit code
+#
+#   run_psql_cmd "sql_command"
+#     - Execute PostgreSQL command with logging
+#     - Parameters: SQL command string
+#     - Returns: psql command's exit code
+#
+#   source_cloudberry_env
+#     - Source CloudBerry environment files
+#     - Returns: 0 on success
+#
+#   log_section "section_name"
+#     - Log section start
+#     - Parameters: Name of the section
+#
+#   log_section_end "section_name"
+#     - Log section end
+#     - Parameters: Name of the section
+#
+#   log_completion "script_name" "log_file"
+#     - Log script completion
+#     - Parameters:
+#       * script_name: Name of the calling script
+#       * log_file: Path to log file
 #
 # Usage:
 #   source ./cloudberry-utils.sh
-#   init_environment "Script Name" "${LOG_FILE}"
-#   execute_cmd some_command arg1 arg2
-#   run_psql_cmd "SELECT version()"
-#   log_section "Section Name"
-#   log_section_end "Section Name"
-#   log_completion "Script Name" "${LOG_FILE}"
+#
+# Example:
+#   source ./cloudberry-utils.sh
+#   init_environment "My Script" "${LOG_FILE}"
+#   execute_cmd make clean
+#   log_section "Build Process"
+#   execute_cmd make -j$(nproc)
+#   log_section_end "Build Process"
+#   log_completion "My Script" "${LOG_FILE}"
 #
 # --------------------------------------------------------------------
-
-set -euo pipefail
 
 # Initialize logging and environment
 init_environment() {

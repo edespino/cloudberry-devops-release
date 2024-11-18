@@ -21,47 +21,61 @@
 #
 # Script: parse-test-results.sh
 # Description: Parses CloudBerry DB test results and processes the output.
-#             Wraps parse_results.pl to provide additional functionality
-#             and GitHub Actions integration.
+#             Provides GitHub Actions integration and environment variable
+#             export functionality. This script is a wrapper around
+#             parse_results.pl, adding the following features:
+#             1. Default log file path handling
+#             2. GitHub Actions output integration
+#             3. Environment variable management
+#             4. Result file cleanup
 #
 # Required Environment Variables:
 #   None
 #
 # Optional Environment Variables:
-#   GITHUB_OUTPUT - GitHub Actions output file path (for CI environment)
+#   GITHUB_OUTPUT - GitHub Actions output file path
+#   MAKE_NAME    - Used in default log path construction
+#
+# Arguments:
+#   [log-file] - Path to test log file
+#                (defaults to build-logs/details/make-${MAKE_NAME}.log)
+#
+# Prerequisites:
+#   - parse_results.pl must be in the same directory
+#   - Perl must be installed and in PATH
+#   - Write access to current directory (for temporary files)
+#   - Read access to test log file
+#
+# Output Variables (in GitHub Actions):
+#   status           - Test status (passed/failed)
+#   total_tests      - Total number of tests
+#   failed_tests     - Number of failed tests
+#   passed_tests     - Number of passed tests
+#   failed_test_names - Names of failed tests (comma-separated)
+#
+# Usage Examples:
+#   # Parse default log file:
+#   ./parse-test-results.sh
+#
+#   # Parse specific log file:
+#   ./parse-test-results.sh path/to/test.log
+#
+#   # Use with GitHub Actions:
+#   export GITHUB_OUTPUT=/path/to/output
+#   ./parse-test-results.sh
 #
 # Exit Codes:
 #   0 - All tests passed successfully
 #   1 - Tests failed but results were properly parsed
 #   2 - Parse error, missing files, or unknown status
 #
-# Outputs (when GITHUB_OUTPUT is set):
-#   status           - Test status (passed/failed)
-#   total_tests      - Total number of tests
-#   failed_tests     - Number of failed tests
-#   passed_tests     - Number of passed tests
-#   failed_test_names - Comma-separated list of failed test names
-#
-# Usage:
-#   ./parse-test-results.sh [log-file]
-#
-# Arguments:
-#   log-file    Path to test log file (defaults to "build-logs/details/make-${MAKE_NAME}.log")
-#
-# Examples:
-#   ./parse-test-results.sh
-#   ./parse-test-results.sh path/to/custom/test.log
-#
-# Dependencies:
-#   - parse_results.pl must be in the same directory as this script
-#   - Requires Perl to be installed
-#
-# Notes:
-#   - Creates and removes temporary file test_results.txt
-#   - Handles both local execution and GitHub Actions environment
-#   - Preserves exit codes from parse_results.pl
+# Files Created/Modified:
+#   - Temporary: test_results.txt (automatically cleaned up)
+#   - If GITHUB_OUTPUT set: Appends results to specified file
 #
 # --------------------------------------------------------------------
+
+set -euo pipefail
 
 # Default log file path
 DEFAULT_LOG_PATH="build-logs/details/make-${MAKE_NAME}.log"
@@ -93,24 +107,23 @@ echo "STATUS=$STATUS"
 echo "TOTAL_TESTS=$TOTAL_TESTS"
 echo "FAILED_TESTS=$FAILED_TESTS"
 echo "PASSED_TESTS=$PASSED_TESTS"
-if [ -n "$FAILED_TEST_NAMES" ]; then
+if [ -n "${FAILED_TEST_NAMES:-}" ]; then
     echo "FAILED_TEST_NAMES=$FAILED_TEST_NAMES"
 fi
 
 # If in GitHub Actions, set outputs
-if [ -n "$GITHUB_OUTPUT" ]; then
+if [ -n "${GITHUB_OUTPUT:-}" ]; then
     {
         echo "status=$STATUS"
         echo "total_tests=$TOTAL_TESTS"
         echo "failed_tests=$FAILED_TESTS"
         echo "passed_tests=$PASSED_TESTS"
-        [ -n "$FAILED_TEST_NAMES" ] && echo "failed_test_names=$FAILED_TEST_NAMES"
-
-} >> "$GITHUB_OUTPUT"
+        [ -n "${FAILED_TEST_NAMES:-}" ] && echo "failed_test_names=$FAILED_TEST_NAMES"
+    } >> "$GITHUB_OUTPUT"
 fi
 
 # Clean up
-rm test_results.txt
+rm -f test_results.txt
 
 # Return the perl script's exit code
 exit $perl_exit_code

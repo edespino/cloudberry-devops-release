@@ -20,13 +20,37 @@
 # --------------------------------------------------------------------
 #
 # Script: build-cloudberry.sh
-# Description: Builds CloudBerry DB from source
+# Description: Builds CloudBerry DB from source code and installs it.
+#             Performs the following steps:
+#             1. Builds main CloudBerry DB components
+#             2. Builds contrib modules
+#             3. Installs both main and contrib components
+#             Uses parallel compilation based on available CPU cores.
 #
 # Required Environment Variables:
-#   SRC_DIR - Root source directory
+#   SRC_DIR - Root source directory containing CloudBerry DB source code
 #
 # Optional Environment Variables:
 #   LOG_DIR - Directory for logs (defaults to ${SRC_DIR}/build-logs)
+#   NPROC   - Number of parallel jobs (defaults to all available cores)
+#
+# Usage:
+#   Export required variables:
+#     export SRC_DIR=/path/to/cloudberry/source
+#   Then run:
+#     ./build-cloudberry.sh
+#
+# Prerequisites:
+#   - configure-cloudberry.sh must be run first
+#   - Required build dependencies must be installed
+#   - /usr/local/cloudberry-db/lib must exist and be writable
+#
+# Exit Codes:
+#   0 - Build and installation completed successfully
+#   1 - Environment setup failed (missing SRC_DIR, LOG_DIR creation failed)
+#   2 - Main component build failed
+#   3 - Contrib build failed
+#   4 - Installation failed
 #
 # --------------------------------------------------------------------
 
@@ -50,14 +74,14 @@ log_section_end "Environment Setup"
 
 # Build process
 log_section "Build Process"
-execute_cmd make -j$(nproc) --directory ${SRC_DIR}
-execute_cmd make -j$(nproc) --directory ${SRC_DIR}/contrib
+execute_cmd make -j$(nproc) --directory ${SRC_DIR} || exit 2
+execute_cmd make -j$(nproc) --directory ${SRC_DIR}/contrib || exit 3
 log_section_end "Build Process"
 
 # Installation
 log_section "Installation"
-execute_cmd make install --directory ${SRC_DIR}
-execute_cmd make install --directory ${SRC_DIR}/contrib
+execute_cmd make install --directory ${SRC_DIR} || exit 4
+execute_cmd make install --directory ${SRC_DIR}/contrib || exit 4
 log_section_end "Installation"
 
 # Log completion

@@ -20,13 +20,42 @@
 # --------------------------------------------------------------------
 #
 # Script: destroy-cloudberry-demo-cluster.sh
-# Description: Destroys demo CloudBerry DB cluster
+# Description: Destroys and cleans up a demo CloudBerry DB cluster.
+#             Performs the following steps:
+#             1. Sources required environment variables
+#             2. Stops any running cluster processes
+#             3. Removes cluster data directories and configuration
+#             4. Cleans up any remaining cluster resources
 #
 # Required Environment Variables:
 #   SRC_DIR - Root source directory
 #
 # Optional Environment Variables:
 #   LOG_DIR - Directory for logs (defaults to ${SRC_DIR}/build-logs)
+#
+# Prerequisites:
+#   - CloudBerry DB environment must be available
+#   - User must have permissions to remove cluster directories
+#   - No active connections to the cluster
+#
+# Usage:
+#   Export required variables:
+#     export SRC_DIR=/path/to/cloudberry/source
+#   Then run:
+#     ./destroy-cloudberry-demo-cluster.sh
+#
+# Exit Codes:
+#   0 - Cluster destroyed successfully
+#   1 - Environment setup/sourcing failed
+#   2 - Cluster destruction failed
+#
+# Related Scripts:
+#   - create-cloudberry-demo-cluster.sh: Creates a new demo cluster
+#
+# Notes:
+#   - This script will forcefully terminate all cluster processes
+#   - All cluster data will be permanently deleted
+#   - Make sure to backup any important data before running
 #
 # --------------------------------------------------------------------
 
@@ -45,13 +74,26 @@ init_environment "Destroy CloudBerry Demo Cluster Script" "${CLUSTER_LOG}"
 
 # Source CloudBerry environment
 log_section "Environment Setup"
-source_cloudberry_env
+source_cloudberry_env || {
+    echo "Failed to source CloudBerry environment" | tee -a "${CLUSTER_LOG}"
+    exit 1
+}
 log_section_end "Environment Setup"
 
 # Destroy demo cluster
 log_section "Destroy Demo Cluster"
-execute_cmd make destroy-demo-cluster --directory ${SRC_DIR}/../cloudberry
+execute_cmd make destroy-demo-cluster --directory ${SRC_DIR}/../cloudberry || {
+    echo "Failed to destroy demo cluster" | tee -a "${CLUSTER_LOG}"
+    exit 2
+}
 log_section_end "Destroy Demo Cluster"
+
+# Verify cleanup
+log_section "Cleanup Verification"
+if [ -d "${SRC_DIR}/../cloudberry/gpAux/gpdemo/data" ]; then
+    echo "Warning: Data directory still exists after cleanup" | tee -a "${CLUSTER_LOG}"
+fi
+log_section_end "Cleanup Verification"
 
 # Log completion
 log_completion "Destroy CloudBerry Demo Cluster Script" "${CLUSTER_LOG}"

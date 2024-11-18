@@ -20,20 +20,34 @@
 # --------------------------------------------------------------------
 #
 # Script: test-cloudberry.sh
-# Description: Executes CloudBerry DB test suite with specified make target
+# Description: Executes CloudBerry DB test suite using specified make target.
+#             Supports different test types through make target configuration.
+#             Sources CloudBerry environment before running tests.
 #
 # Required Environment Variables:
-#   MAKE_NAME
-#   MAKE_TARGET
-#   MAKE_DIRECTORY
+#   MAKE_TARGET    - Make target to execute (e.g., installcheck-world)
+#   MAKE_DIRECTORY - Directory where make command will be executed
+#   MAKE_NAME      - Name of the make operation (for logging)
 #
 # Optional Environment Variables:
 #   LOG_DIR - Directory for logs (defaults to build-logs)
+#   PGOPTIONS - PostgreSQL server options
 #
 # Usage:
-#   ./test-cloudberry.sh
+#   Export required variables:
+#     export MAKE_TARGET=installcheck-world
+#     export MAKE_DIRECTORY="/path/to/make/dir"
+#     export MAKE_NAME="Install Check"
+#   Then run:
+#     ./test-cloudberry.sh
+#
+# Exit Codes:
+#   0 - All tests passed successfully
+#   1 - Environment setup failed (missing required variables, environment sourcing failed)
+#   2 - Test execution failed (make command returned error)
 #
 # --------------------------------------------------------------------
+
 set -euo pipefail
 
 # Source common utilities
@@ -49,7 +63,7 @@ init_environment "CloudBerry Test Script" "${TEST_LOG}"
 
 # Source CloudBerry environment
 log_section "Environment Setup"
-source_cloudberry_env
+source_cloudberry_env || exit 1
 log_section_end "Environment Setup"
 
 echo "MAKE_TARGET: ${MAKE_TARGET}"
@@ -58,7 +72,7 @@ echo "PGOPTIONS: ${PGOPTIONS}"
 
 # Execute specified target
 log_section "Install Check"
-execute_cmd make ${MAKE_TARGET} ${MAKE_DIRECTORY}
+execute_cmd make ${MAKE_TARGET} ${MAKE_DIRECTORY} || exit 2
 log_section_end "Install Check"
 
 # Log completion
