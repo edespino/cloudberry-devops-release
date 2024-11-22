@@ -215,6 +215,7 @@ ENV LD_LIBRARY_PATH=/usr/local/cloudberry-db/lib:${LD_LIBRARY_PATH}
 RUN cd ~/cloudberry && \
     ./configure --prefix=/usr/local/cloudberry-db \
                 --disable-external-fts \
+                --enable-cassert \
                 --enable-debug-extensions \
                 --enable-gpcloud \
                 --enable-ic-proxy \
