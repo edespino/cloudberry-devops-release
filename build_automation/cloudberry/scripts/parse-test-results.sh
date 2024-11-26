@@ -98,20 +98,6 @@ fi
 
 source test_results.txt
 
-# Log results to stdout for debugging purposes
-echo "Results loaded into environment variables:"
-echo "STATUS=$STATUS"
-echo "TOTAL_TESTS=$TOTAL_TESTS"
-echo "FAILED_TESTS=$FAILED_TESTS"
-echo "PASSED_TESTS=$PASSED_TESTS"
-echo "IGNORED_TESTS=$IGNORED_TESTS"
-if [ -n "${FAILED_TEST_NAMES:-}" ]; then
-    echo "FAILED_TEST_NAMES=$FAILED_TEST_NAMES"
-fi
-if [ -n "${IGNORED_TEST_NAMES:-}" ]; then
-    echo "IGNORED_TEST_NAMES=$IGNORED_TEST_NAMES"
-fi
-
 # If in GitHub Actions, set outputs
 if [ -n "${GITHUB_OUTPUT:-}" ]; then
     {
