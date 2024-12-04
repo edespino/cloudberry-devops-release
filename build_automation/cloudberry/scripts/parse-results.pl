@@ -135,6 +135,9 @@ while (<$fh>) {
         $total_tests = $2;
         $passed_tests = $2 - $1;
     }
+    else {
+        exit PARSE_ERROR;
+    }
 
     # Capture failed tests
     if (/^(?:\s+|test\s+)(\S+)\s+\.\.\.\s+FAILED\s+/) {
