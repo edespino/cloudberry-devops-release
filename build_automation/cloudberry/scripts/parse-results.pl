@@ -136,7 +136,8 @@ while (<$fh>) {
         $passed_tests = $2 - $1;
     }
     else {
-        exit PARSE_ERROR;
+        print "##### Possible parse error #####\n";
+        $status = 'parse_error';
     }
 
     # Capture failed tests
