@@ -122,17 +122,14 @@ analyze_core_file() {
 
         # Run GDB analysis
         log_message "Starting GDB analysis..."
-        gdb -quiet --batch \
-            -ex "set logging enabled" \
-            -ex "set pagination off" \
-            -ex "set print pretty on" \
-            -ex "info target" \
-            -ex "info proc mappings" \
-            -ex "thread apply all bt full" \
-            -ex "info registers" \
-            -ex "print \$_siginfo" \
-            -ex "info sharedlibrary" \
-            -ex "quit" \
+
+        gdb -quiet \
+            --batch \
+            -ex 'set pagination off' \
+            -ex 'info target' \
+            -ex 'thread apply all bt' \
+            -ex 'print $_siginfo' \
+            -ex quit \
             "$executable" "$core_file" 2>&1 >> "$log_file"
 
         local gdb_rc=$?
@@ -210,10 +207,6 @@ main() {
     fi
 
     log_message "Log file: $log_file"
-
-    # Display the analysis results
-    echo "=== Analysis Results ==="
-    cat "$log_file"
 
     return $return_code
 }
