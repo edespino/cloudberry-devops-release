@@ -109,6 +109,8 @@ log_section_end "Environment Setup"
 # Configure build
 log_section "Configure"
 execute_cmd ./configure --prefix=/usr/local/cloudberry-db \
+            --enable-debug \
+            --enable-profiling \
             --disable-external-fts \
             --enable-cassert \
             --enable-debug-extensions \
