@@ -125,12 +125,13 @@ analyze_core_file() {
         gdb -quiet --batch \
             -ex "set logging enabled" \
             -ex "set pagination off" \
+            -ex "set print pretty on" \
             -ex "info target" \
-            -ex "info files" \
             -ex "info proc mappings" \
             -ex "thread apply all bt full" \
             -ex "info registers" \
-            -ex "x/16i \$pc" \
+            -ex "print \$_siginfo" \
+            -ex "info sharedlibrary" \
             -ex "quit" \
             "$executable" "$core_file" 2>&1 >> "$log_file"
 
