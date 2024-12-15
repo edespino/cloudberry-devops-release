@@ -87,8 +87,8 @@ while [[ "$#" -gt 0 ]]; do
       shift
       ;;
     *)
-      echo "Unknown option: $1"
-      usage
+      echo "Unknown option: ($1)"
+      shift
       ;;
   esac
 done
@@ -115,8 +115,6 @@ fi
 RPMBUILD_CMD="rpmbuild -bb \"$SPEC_FILE\" --define \"version $VERSION\" --define \"release $RELEASE\""
 if [ "$DEBUG_BUILD" = true ]; then
     RPMBUILD_CMD+=" --with debug"
-else
-    RPMBUILD_CMD+=" --without debug"
 fi
 
 # Dry-run mode
