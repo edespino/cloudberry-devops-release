@@ -199,7 +199,7 @@ main() {
         log_message "No core files found matching pattern $core_pattern in $core_dir"
         return_code=0  # No cores found
     elif ((analyzed_count == core_count)); then
-        log_message "Analysis complete. Successfully processed all $analyzed_count core files"
+        log_message "Analysis complete. Successfully processed $analyzed_count core(s) files"
         return_code=1  # All cores processed successfully
     else
         log_message "Analysis complete with errors. Processed $analyzed_count of $core_count core files"
