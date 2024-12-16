@@ -201,7 +201,7 @@ USER gpadmin
 WORKDIR /home/gpadmin
 
 # Clone Cloudberry and set up build environment
-RUN git clone --branch IC-dev --single-branch --depth=1 https://github.com/edespino/cloudberry.git ~/cloudberry && \
+RUN git clone https://github.com/edespino/cloudberry.git ~/cloudberry && \
     sudo rm -rf /usr/local/cloudberry-db && \
     sudo chmod a+w /usr/local && \
     mkdir -p /usr/local/cloudberry-db/lib && \
