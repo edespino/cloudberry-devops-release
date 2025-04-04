@@ -82,99 +82,54 @@ RUN apt-get update && \
             bat \
             silversearcher-ag \
             vim \
-            wget && \
-    apt-get install -y -qq locales && \
-    locale-gen "en_US.UTF-8" && \
-    update-locale LANG="en_US.UTF-8" && \
-    apt-get install -y -qq \
-            bison \
-            cmake \
-            flex \
-            g++-11 \
-            gcc-11 \
+            wget \
             git \
             iproute2 \
             iputils-ping \
-            libapr1-dev \
-            libbz2-dev \
-            libcurl4-gnutls-dev \
-            libevent-dev \
-            libipc-run-perl \
-            libkrb5-dev \
-            libldap-dev \
-            liblz4-dev \
-            libpam0g-dev \
-            libperl-dev \
-            libprotobuf-dev \
-            libreadline-dev \
-            libssl-dev \
-            libuv1-dev \
-            libxerces-c-dev \
-            libxml2-dev \
-            libyaml-dev \
-            libzstd-dev \
             lsof \
-            make \
             openssh-server \
             pkg-config \
-            protobuf-compiler \
             python3.10 \
-            python3.10-dev \
             python3-distutils \
             python3-pip \
             python3-setuptools \
             rsync \
             sudo \
-            tzdata \
-            zlib1g-dev && \
-    apt-get clean && rm -rf /var/lib/apt/lists/* && \
-    cd && GO_VERSION="go1.23.4" && \
-    ARCH=$(uname -m) && \
-    if [ "${ARCH}" = "aarch64" ]; then \
-        GO_ARCH="arm64" && \
-        GO_SHA256="16e5017863a7f6071363782b1b8042eb12c6ca4f4cd71528b2123f0a1275b13e"; \
-    elif [ "${ARCH}" = "x86_64" ]; then \
-        GO_ARCH="amd64" && \
-        GO_SHA256="6924efde5de86fe277676e929dc9917d466efa02fb934197bc2eba35d5680971"; \
-    else \
-        echo "Unsupported architecture: ${ARCH}" && exit 1; \
-    fi && \
-    GO_URL="https://go.dev/dl/${GO_VERSION}.linux-${GO_ARCH}.tar.gz" && \
-    wget -nv "${GO_URL}" && \
-    echo "${GO_SHA256}  ${GO_VERSION}.linux-${GO_ARCH}.tar.gz" | sha256sum -c - && \
-    tar xf "${GO_VERSION}.linux-${GO_ARCH}.tar.gz" && \
-    mv go "/usr/local/${GO_VERSION}" && \
-    ln -s "/usr/local/${GO_VERSION}" /usr/local/go && \
-    rm -f "${GO_VERSION}.linux-${GO_ARCH}.tar.gz" && \
-    echo 'export PATH=$PATH:/usr/local/go/bin' | tee -a /etc/profile.d/go.sh > /dev/null
+            tzdata && \
+    apt-get install -y -qq locales && \
+    locale-gen "en_US.UTF-8" && \
+    update-locale LANG="en_US.UTF-8" && \
 
-RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 100 && \
-    update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 100 && \
-    update-alternatives --install /usr/bin/x86_64-linux-gnu-gcc x86_64-linux-gnu-gcc /usr/bin/gcc-11 100 && \
-    update-alternatives --set gcc /usr/bin/gcc-11 && \
-    update-alternatives --set g++ /usr/bin/g++-11
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# --------------------------------------------------------------------
+# User Creation and Configuration
+# --------------------------------------------------------------------
+# - Create the 'gpadmin' user and group.
+# - Configure the 'gpadmin' user with passwordless sudo privileges.
+# - Add Cloudberry-specific entries to the gpadmin's .bashrc.
+# --------------------------------------------------------------------
+RUN /usr/sbin/groupadd gpadmin && \
+    /usr/sbin/useradd -m -g gpadmin gpadmin && \
+    echo 'gpadmin ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/90-gpadmin && \
+    chmod 0440 /etc/sudoers.d/90-gpadmin && \
+    echo -e '\n# Add Cloudberry entries\nif [ -f /usr/local/cloudberry/greenplum_path.sh ]; then\n  source /usr/local/cloudberry/greenplum_path.sh\n  export COORDINATOR_DATA_DIRECTORY=/data1/coordinator/gpseg-1\nfi' >> /home/gpadmin/.bashrc
 
 # --------------------------------------------------------------------
 # Copy Configuration Files and Setup the Environment
 # --------------------------------------------------------------------
-
+# - Copy custom configuration files from the build context to /tmp/.
+# - Apply custom system limits and timezone.
+# - Set up SSH for password-based authentication.
+# - Generate locale and set the default locale to en_US.UTF-8.
+# --------------------------------------------------------------------
 COPY ./configs/* /tmp/
 
 RUN cp /tmp/90-cbdb-limits /etc/security/limits.d/90-cbdb-limits && \
     ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
     echo $TZ > /etc/timezone && \
     chmod 755 /tmp/init_system.sh && \
-    /usr/sbin/groupadd gpadmin && \
-    /usr/sbin/useradd -m -g gpadmin gpadmin && \
-    echo 'gpadmin ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/90-gpadmin && \
-    chmod 0440 /etc/sudoers.d/90-gpadmin && \
     ssh-keygen -A
-
-# Install testinfra via pip
-RUN pip3 install pytest-testinfra
-
-# Example: Copying test files into the container
-COPY tests /tests
 
 USER gpadmin
 WORKDIR /home/gpadmin
