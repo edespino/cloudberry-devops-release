@@ -146,3 +146,14 @@ log_completion() {
     local timestamp=$(date "+%Y.%m.%d-%H.%M.%S")
     echo "${script_name} execution completed successfully at ${timestamp}" | tee -a "${log_file}"
 }
+
+detect_os() {
+  if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    OS_ID=$ID
+    OS_VERSION=$VERSION_ID
+  else
+    echo "Unsupported system: cannot detect OS" >&2
+    exit 99
+  fi
+}

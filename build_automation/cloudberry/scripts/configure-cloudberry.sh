@@ -91,6 +91,11 @@ set -euo pipefail
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source "${SCRIPT_DIR}/cloudberry-utils.sh"
 
+# Call it before conditional logic
+detect_os
+
+echo "Detected OS: $OS_ID $OS_VERSION"
+
 # Define log directory and files
 export LOG_DIR="${SRC_DIR}/build-logs"
 CONFIGURE_LOG="${LOG_DIR}/configure.log"
@@ -103,9 +108,12 @@ log_section "Initial Setup"
 execute_cmd sudo rm -rf /usr/local/cloudberry-db || exit 2
 execute_cmd sudo chmod a+w /usr/local || exit 2
 execute_cmd mkdir -p /usr/local/cloudberry-db/lib || exit 2
-execute_cmd sudo cp /usr/local/xerces-c/lib/libxerces-c.so \
-        /usr/local/xerces-c/lib/libxerces-c-3.3.so \
-        /usr/local/cloudberry-db/lib || exit 3
+if [[ "$OS_ID" == "rocky" && "$OS_VERSION" =~ ^(8|9) ]]; then
+    execute_cmd sudo cp /usr/local/xerces-c/lib/libxerces-c.so \
+                /usr/local/xerces-c/lib/libxerces-c-3.3.so \
+                /usr/local/cloudberry-db/lib || exit 3
+fi
+
 execute_cmd sudo chown -R gpadmin:gpadmin /usr/local/cloudberry-db || exit 2
 log_section_end "Initial Setup"
 
@@ -119,7 +127,6 @@ CONFIGURE_DEBUG_OPTS=""
 
 if [ "${ENABLE_DEBUG:-false}" = "true" ]; then
     CONFIGURE_DEBUG_OPTS="--enable-debug \
-                          --enable-profiling \
                           --enable-cassert \
                           --enable-debug-extensions"
 fi
