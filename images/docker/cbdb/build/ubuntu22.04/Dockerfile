@@ -88,7 +88,10 @@ RUN apt-get update && \
     update-locale LANG="en_US.UTF-8" && \
     apt-get install -y -qq \
             bison \
+            build-essential \
             cmake \
+            dpkg-dev \
+            fakeroot \
             flex \
             g++-11 \
             gcc-11 \
@@ -118,11 +121,11 @@ RUN apt-get update && \
             openssh-server \
             pkg-config \
             protobuf-compiler \
-            python3.10 \
-            python3.10-dev \
             python3-distutils \
             python3-pip \
             python3-setuptools \
+            python3.10 \
+            python3.10-dev \
             rsync \
             sudo \
             tzdata \
