@@ -60,7 +60,7 @@
 #   docker run -h cdw -it cloudberry-db-base-env
 # --------------------------------------------------------------------
 
-FROM ubuntu:jammy
+FROM ubuntu:22.04
 
 # Argument for configuring the timezone
 ARG TIMEZONE_VAR="Europe/London"
