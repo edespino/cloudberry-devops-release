@@ -292,10 +292,20 @@ fi
 CONFIGURE_VERSION_LINE=$(grep "^PACKAGE_VERSION=" configure || true)
 CONFIGURE_VERSION=$(echo "$CONFIGURE_VERSION_LINE" | sed -E "s/^PACKAGE_VERSION='([^']+)'.*/\1/")
 
-if [[ "$CONFIGURE_VERSION" != "$TAG" ]]; then
-  echo "ERROR: Version in generated 'configure' script ($CONFIGURE_VERSION) does not match release tag ($TAG)."
-  echo "This likely means autoconf was not run after updating configure.ac."
-  exit 1
+# For RC tags, compare base versions (without -rc suffix)
+if [[ "$TAG" == *-rc* ]]; then
+  TAG_BASE_VERSION=$(echo "$TAG" | sed -E 's/-rc[0-9]+$//')
+  if [[ "$CONFIGURE_VERSION" != "$TAG_BASE_VERSION" ]]; then
+    echo "ERROR: Version in generated 'configure' script ($CONFIGURE_VERSION) does not match base version of release tag ($TAG_BASE_VERSION from $TAG)."
+    echo "This likely means autoconf was not run after updating configure.ac."
+    exit 1
+  fi
+else
+  if [[ "$CONFIGURE_VERSION" != "$TAG" ]]; then
+    echo "ERROR: Version in generated 'configure' script ($CONFIGURE_VERSION) does not match release tag ($TAG)."
+    echo "This likely means autoconf was not run after updating configure.ac."
+    exit 1
+  fi
 fi
 
 # Ensure xmllint is available
@@ -312,10 +322,20 @@ if [[ -z "$POM_VERSION" ]]; then
   exit 1
 fi
 
-if [[ "$POM_VERSION" != "$TAG" ]]; then
-  echo "ERROR: Version in pom.xml ($POM_VERSION) does not match release tag ($TAG)."
-  echo "Please update pom.xml before tagging."
-  exit 1
+# For RC tags, compare base versions (without -rc suffix)
+if [[ "$TAG" == *-rc* ]]; then
+  TAG_BASE_VERSION=$(echo "$TAG" | sed -E 's/-rc[0-9]+$//')
+  if [[ "$POM_VERSION" != "$TAG_BASE_VERSION" ]]; then
+    echo "ERROR: Version in pom.xml ($POM_VERSION) does not match base version of release tag ($TAG_BASE_VERSION from $TAG)."
+    echo "Please update pom.xml before tagging."
+    exit 1
+  fi
+else
+  if [[ "$POM_VERSION" != "$TAG" ]]; then
+    echo "ERROR: Version in pom.xml ($POM_VERSION) does not match release tag ($TAG)."
+    echo "Please update pom.xml before tagging."
+    exit 1
+  fi
 fi
 
 # Ensure working tree is clean
