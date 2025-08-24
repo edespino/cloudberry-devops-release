@@ -516,7 +516,7 @@ if $STAGE; then
 
   # Move artifacts to top-level artifacts directory
 
-  ARTIFACTS_DIR="$(cd "$(dirname "$REPO_ARG")" && cd .. && pwd)/artifacts"
+  ARTIFACTS_DIR="$(dirname "$REPO_ARG")/artifacts"
   mkdir -p "$ARTIFACTS_DIR"
 
   section "Moving Artifacts to $ARTIFACTS_DIR"
@@ -569,10 +569,7 @@ elif $RELEASE; then
       echo "       Use --force-tag-reuse only when the tag matches the RC commit."
       exit 1
     fi
-  elif [[ "$FORCE_TAG_REUSE" == true ]]; then
-    echo "ERROR: --force-tag-reuse was specified, but final tag '$RELEASE_TAG' does not exist."
-    echo "       You can only reuse a tag if it already exists."
-    exit 1
+  # Final release tag doesn't exist, so create it
   else
     confirm "You are about to create final release tag '$RELEASE_TAG' from RC tag '$TAG'. Continue?"
     git tag -a "$RELEASE_TAG" "$TAG" -m "Apache Cloudberry (Incubating) ${RELEASE_TAG} Final Release"
@@ -630,7 +627,7 @@ elif $RELEASE; then
   fi
 
   # Move artifacts to top-level artifacts directory
-  ARTIFACTS_DIR="$(cd "$(dirname "$REPO_ARG")" && cd .. && pwd)/artifacts"
+  ARTIFACTS_DIR="$(dirname "$REPO_ARG")/artifacts"
   mkdir -p "$ARTIFACTS_DIR"
 
   section "Moving Final Release Artifacts to $ARTIFACTS_DIR"
@@ -653,4 +650,6 @@ elif $RELEASE; then
   fi
 
   section "Final release for $RELEASE_TAG created successfully"
+fi
+
 fi
