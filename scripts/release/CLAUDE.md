@@ -22,7 +22,7 @@ This directory contains `cloudberry-release.sh`, an automated release utility fo
 - Creates RC tag (e.g., `2.0.0-incubating-rc1`)
 - Generates RC tarball with RC suffix in name and directory structure
 - Creates SHA-512 checksum and GPG signature
-- Moves artifacts to `../artifacts/` directory
+- Moves artifacts to `~/artifacts/` directory (relative to repository location)
 
 #### 2. Final Release Creation (`--release`)
 ```bash
@@ -71,8 +71,9 @@ This directory contains `cloudberry-release.sh`, an automated release utility fo
 ## File Structure
 
 ### Generated Artifacts
+Artifacts are created in `~/artifacts/` directory (relative to the repository location):
 ```
-artifacts/
+~/artifacts/
 ├── apache-cloudberry-X.Y.Z-incubating-rcN-src.tar.gz      # RC tarball
 ├── apache-cloudberry-X.Y.Z-incubating-rcN-src.tar.gz.sha512
 ├── apache-cloudberry-X.Y.Z-incubating-rcN-src.tar.gz.asc
@@ -99,9 +100,17 @@ artifacts/
 - Remote repository URL validation (prevents accidental releases from forks)
 - Artifact integrity verification after generation
 
+### Interactive Requirements
+- **GPG Signing**: The script requires interactive passphrase input for GPG signing
+- **Confirmations**: User confirmation is required before creating tags
+- **Manual Execution**: Script cannot be fully automated with pipes (e.g., `echo "y" |`) due to GPG passphrase requirements
+- For automated testing, use `--skip-signing` to bypass GPG interaction
+
 ### Development Context
 - Added `--release` functionality to support final release creation from RC tags
-- Fixed redundant condition check in repository validation logic
+- Fixed artifacts directory path to use correct location relative to repository
+- Fixed release flow logic to properly handle final tag creation from RC tags
+- Fixed syntax error with missing `fi` statement in release conditional block
 - Enhanced help text and documentation for both workflows
 - Maintains backward compatibility with existing `--stage` workflow
 
@@ -112,8 +121,8 @@ artifacts/
 # 1. Create RC
 ./cloudberry-release.sh --stage --tag 2.0.0-incubating-rc1 --gpg-user your@apache.org
 
-# 2. After RC approval, create final release
-./cloudberry-release.sh --release --tag 2.0.0-incubating-rc1 --gpg-user your@apache.org
+# 2. After RC approval, create final release (requires --force-tag-reuse if RC tag exists)
+./cloudberry-release.sh --release --tag 2.0.0-incubating-rc1 --gpg-user your@apache.org --force-tag-reuse
 ```
 
 ### Development/Testing

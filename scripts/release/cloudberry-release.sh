@@ -35,13 +35,18 @@
 #   - Recursively archives all submodules into the source tarball
 #   - Generates SHA-512 checksum (.sha512) for the source tarball
 #   - Generates GPG signature (.asc) for the source tarball, unless --skip-signing is used
-#   - Moves signed artifacts into a dedicated artifacts/ directory
+#   - Moves signed artifacts into artifacts/ directory (relative to repository location)
 #   - Verifies integrity and authenticity of artifacts via SHA-512 checksum and GPG signature
 #   - Allows skipping of upstream remote URL validation (e.g., for forks) via --skip-remote-check
 #
 # Usage:
 #   ./cloudberry-release.sh --stage --tag 2.0.0-incubating-rc1 --gpg-user your@apache.org
-#   ./cloudberry-release.sh --release --tag 2.0.0-incubating-rc1 --gpg-user your@apache.org
+#   ./cloudberry-release.sh --release --tag 2.0.0-incubating-rc1 --gpg-user your@apache.org --force-tag-reuse
+#
+# Interactive Requirements:
+#   - GPG signing requires interactive passphrase input (cannot be automated with pipes)
+#   - User confirmation required before creating tags
+#   - Use --skip-signing for non-interactive testing
 #
 # Options:
 #   -s, --stage               Stage a release candidate and generate source tarball
