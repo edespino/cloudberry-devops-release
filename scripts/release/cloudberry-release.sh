@@ -27,6 +27,7 @@
 # Supported Features:
 #   - Validates version consistency across configure.ac, configure, gpversion.py, and pom.xml
 #   - Supports both final releases and release candidates (e.g., 2.0.0-incubating, 2.0.0-incubating-rc1)
+#   - Creates final release tarballs from RC tags by removing -rc suffix from names and structure
 #   - Optionally reuses existing annotated Git tags if they match the current HEAD
 #   - Verifies that Git submodules are initialized (if defined in .gitmodules)
 #   - Verifies Git identity (user.name and user.email) prior to tagging
@@ -40,9 +41,11 @@
 #
 # Usage:
 #   ./cloudberry-release.sh --stage --tag 2.0.0-incubating-rc1 --gpg-user your@apache.org
+#   ./cloudberry-release.sh --release --tag 2.0.0-incubating-rc1 --gpg-user your@apache.org
 #
 # Options:
 #   -s, --stage               Stage a release candidate and generate source tarball
+#   -R, --release             Create final release from RC tag (creates final tag and tarball)
 #   -t, --tag <tag>           Tag to apply or validate (e.g., 2.0.0-incubating-rc1)
 #   -f, --force-tag-reuse     Allow reuse of an existing tag (must match HEAD)
 #   -r, --repo <path>         Optional path to local Cloudberry Git repository
@@ -62,6 +65,7 @@
 #   ./cloudberry-release.sh -s -t 2.0.0-incubating-rc1 --skip-signing
 #   ./cloudberry-release.sh --stage --tag 2.0.0-incubating-rc2 --force-tag-reuse --gpg-user your@apache.org
 #   ./cloudberry-release.sh --stage --tag 2.0.0-incubating-rc1 -r ~/cloudberry --skip-remote-check --gpg-user your@apache.org
+#   ./cloudberry-release.sh -R -t 2.0.0-incubating-rc1 --gpg-user your@apache.org
 #
 # Notes:
 #   - When reusing a tag, the `--force-tag-reuse` flag must be provided.
@@ -95,8 +99,11 @@ show_help() {
   echo "  -s, --stage"
   echo "      Stage a release candidate and generate source tarball"
   echo
+  echo "  -R, --release"
+  echo "      Create final release from RC tag (creates final tag and tarball)"
+  echo
   echo "  -t, --tag <tag>"
-  echo "      Required with --stage (e.g., 2.0.0-incubating-rc1)"
+  echo "      Required with --stage or --release (e.g., 2.0.0-incubating-rc1)"
   echo
   echo "  -f, --force-tag-reuse"
   echo "      Reuse existing tag if it matches current HEAD"
@@ -122,6 +129,7 @@ show_help() {
 
 # Flags
 STAGE=false
+RELEASE=false
 SKIP_SIGNING=false
 TAG=""
 FORCE_TAG_REUSE=false
@@ -142,6 +150,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     -s|--stage)
       STAGE=true
+      shift
+      ;;
+    -R|--release)
+      RELEASE=true
       shift
       ;;
     -t|--tag)
@@ -249,13 +261,26 @@ if [[ -z "$REPO_ARG" ]]; then
   fi
 fi
 
-if ! $STAGE && [[ -z "$TAG" ]]; then
+# Validate command combinations
+if ! $STAGE && ! $RELEASE && [[ -z "$TAG" ]]; then
   show_help
 fi
 
-if $STAGE && [[ -z "$TAG" ]]; then
-  echo "ERROR: --tag (-t) is required when using --stage." >&2
+if ($STAGE || $RELEASE) && [[ -z "$TAG" ]]; then
+  echo "ERROR: --tag (-t) is required when using --stage or --release." >&2
   show_help
+fi
+
+if $STAGE && $RELEASE; then
+  echo "ERROR: Cannot use both --stage and --release simultaneously." >&2
+  show_help
+fi
+
+# For --release, validate that the tag is an RC tag
+if $RELEASE && [[ ! "$TAG" =~ -rc[0-9]+$ ]]; then
+  echo "ERROR: --release requires an RC tag (e.g., 2.0.0-incubating-rc1)" >&2
+  echo "       Found: $TAG" >&2
+  exit 1
 fi
 
 section "Validating Version Consistency"
@@ -403,7 +428,7 @@ fi
 
 section "Checking GIT_USER_NAME and GIT_USER_EMAIL values"
 
-if $STAGE; then
+if $STAGE || $RELEASE; then
   # Validate Git environment before performing tag operation
   GIT_USER_NAME=$(git config --get user.name || true)
   GIT_USER_EMAIL=$(git config --get user.email || true)
@@ -428,7 +453,8 @@ if $STAGE; then
     exit 1
   fi
 
-section "Staging release: $TAG"
+if $STAGE; then
+  section "Staging release: $TAG"
 
   if [[ "$FORCE_TAG_REUSE" == false ]]; then
     confirm "You are about to create tag '$TAG'. Continue?"
@@ -513,4 +539,118 @@ section "Staging release: $TAG"
   fi
 
   section "Release candidate for $TAG staged successfully"
+
+elif $RELEASE; then
+  # Create final release tag by removing RC suffix
+  RELEASE_TAG=$(echo "$TAG" | sed -E 's/-rc[0-9]+$//')
+  
+  section "Creating final release: $RELEASE_TAG"
+  
+  # Verify RC tag exists
+  if ! git rev-parse "$TAG" >/dev/null 2>&1; then
+    echo "ERROR: RC tag '$TAG' does not exist." >&2
+    echo "Please ensure the RC tag exists before creating the final release." >&2
+    exit 1
+  fi
+  
+  # Check if final release tag already exists
+  if git rev-parse "$RELEASE_TAG" >/dev/null 2>&1; then
+    RELEASE_TAG_COMMIT=$(git rev-list -n 1 "$RELEASE_TAG")
+    RC_TAG_COMMIT=$(git rev-list -n 1 "$TAG")
+    
+    if [[ "$RELEASE_TAG_COMMIT" == "$RC_TAG_COMMIT" && "$FORCE_TAG_REUSE" == true ]]; then
+      echo "INFO: Final release tag '$RELEASE_TAG' already exists and matches RC tag. Proceeding with reuse."
+    elif [[ "$FORCE_TAG_REUSE" == true ]]; then
+      echo "ERROR: --force-tag-reuse was specified but final tag '$RELEASE_TAG' does not match RC tag '$TAG'."
+      echo "       Tags must be immutable. Cannot continue."
+      exit 1
+    else
+      echo "ERROR: Final release tag '$RELEASE_TAG' already exists."
+      echo "       Use --force-tag-reuse only when the tag matches the RC commit."
+      exit 1
+    fi
+  elif [[ "$FORCE_TAG_REUSE" == true ]]; then
+    echo "ERROR: --force-tag-reuse was specified, but final tag '$RELEASE_TAG' does not exist."
+    echo "       You can only reuse a tag if it already exists."
+    exit 1
+  else
+    confirm "You are about to create final release tag '$RELEASE_TAG' from RC tag '$TAG'. Continue?"
+    git tag -a "$RELEASE_TAG" "$TAG" -m "Apache Cloudberry (Incubating) ${RELEASE_TAG} Final Release"
+  fi
+
+  echo "Creating BUILD_NUMBER file with value of 1"
+  echo "1" > BUILD_NUMBER
+
+  echo -e "\nFinal Release Tag Summary"
+  RELEASE_TAG_OBJECT=$(git rev-parse "$RELEASE_TAG")
+  RELEASE_TAG_COMMIT=$(git rev-list -n 1 "$RELEASE_TAG")
+  echo "$RELEASE_TAG (tag object): $RELEASE_TAG_OBJECT"
+  echo "    Points to commit: $RELEASE_TAG_COMMIT"
+  git log -1 --format="%C(auto)%h %d" "$RELEASE_TAG"
+
+  section "Creating Final Release Tarball"
+
+  TAR_NAME="apache-cloudberry-${RELEASE_TAG}-src.tar.gz"
+  TMP_DIR=$(mktemp -d)
+  trap 'rm -rf "$TMP_DIR"' EXIT
+
+  git archive --format=tar --prefix="apache-cloudberry-${RELEASE_TAG}/" "$RELEASE_TAG" | tar -x -C "$TMP_DIR"
+  cp BUILD_NUMBER "$TMP_DIR/apache-cloudberry-${RELEASE_TAG}/"
+
+  # Archive submodules if any
+  if [ -s .gitmodules ]; then
+    git submodule foreach --recursive --quiet "
+      echo \"Archiving submodule: \$sm_path\"
+      fullpath=\"\$toplevel/\$sm_path\"
+      destpath=\"$TMP_DIR/apache-cloudberry-$RELEASE_TAG/\$sm_path\"
+      mkdir -p \"\$destpath\"
+      git -C \"\$fullpath\" archive --format=tar --prefix=\"\$sm_path/\" HEAD | tar -x -C \"$TMP_DIR/apache-cloudberry-$RELEASE_TAG\"
+    "
+  fi
+
+  tar -czf "$TAR_NAME" -C "$TMP_DIR" "apache-cloudberry-${RELEASE_TAG}"
+  rm -rf "$TMP_DIR"
+  echo -e "Final release archive saved to: $TAR_NAME"
+
+  # Generate SHA-512 checksum
+  section "Generating SHA-512 Checksum"
+
+  echo -e "\nGenerating SHA-512 checksum"
+  shasum -a 512 "$TAR_NAME" > "${TAR_NAME}.sha512"
+  echo "Checksum saved to: ${TAR_NAME}.sha512"
+
+  section "Signing with GPG key: $GPG_USER"
+  # Conditionally generate GPG signature
+  if [[ "$SKIP_SIGNING" != true ]]; then
+    echo -e "\nSigning final release tarball with GPG key: $GPG_USER"
+    gpg --armor --detach-sign --local-user "$GPG_USER" "$TAR_NAME"
+    echo "GPG signature saved to: ${TAR_NAME}.asc"
+  else
+    echo "INFO: Skipping tarball signing as requested (--skip-signing)"
+  fi
+
+  # Move artifacts to top-level artifacts directory
+  ARTIFACTS_DIR="$(cd "$(dirname "$REPO_ARG")" && cd .. && pwd)/artifacts"
+  mkdir -p "$ARTIFACTS_DIR"
+
+  section "Moving Final Release Artifacts to $ARTIFACTS_DIR"
+
+  echo -e "\nMoving final release artifacts to: $ARTIFACTS_DIR"
+  mv -vf "$TAR_NAME" "$ARTIFACTS_DIR/"
+  mv -vf "${TAR_NAME}.sha512" "$ARTIFACTS_DIR/"
+  [[ -f "${TAR_NAME}.asc" ]] && mv -vf "${TAR_NAME}.asc" "$ARTIFACTS_DIR/"
+
+  section "Verifying sha512 ($ARTIFACTS_DIR/${TAR_NAME}.sha512) Final Release Artifact"
+  cd "$ARTIFACTS_DIR"
+  sha512sum -c "$ARTIFACTS_DIR/${TAR_NAME}.sha512"
+
+  section "Verifying GPG Signature ($ARTIFACTS_DIR/${TAR_NAME}.asc) Final Release Artifact"
+
+  if [[ "$SKIP_SIGNING" != true ]]; then
+    gpg --verify "${TAR_NAME}.asc" "$TAR_NAME"
+  else
+    echo "INFO: Signature verification skipped (--skip-signing). Signature is only available when generated via this script."
+  fi
+
+  section "Final release for $RELEASE_TAG created successfully"
 fi
